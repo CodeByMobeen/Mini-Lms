@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Results — Mini LMS</title>
+  <link rel="stylesheet" href="styles/theme.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="images/logo.svg" alt="logo">
+        <div>
+          <div class="brand">Mini LMS</div>
+          <small>Student Portal</small>
+        </div>
+      </div>
+
+      <nav style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        <a class="nav-item" href="dashboard.html">Dashboard</a>
+        <a class="nav-item" href="profile.html">Profile</a>
+        <a class="nav-item" href="courses.html">Courses</a>
+        <a class="nav-item" href="attendance.html">Attendance</a>
+        <a class="nav-item" href="assignments.html">Assignments</a>
+        <a class="nav-item" href="quiz.html">Quiz</a>
+        <a class="nav-item" href="results.html">Results</a>
+        <a class="nav-item" href="announcements.html">Announcements</a>
+        <a class="nav-item" href="login.html">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main container">
+      <div class="topbar">
+        <h2>Semester Results</h2>
+        <div class="muted">Overview of grades and GPA</div>
+      </div>
+
+      <section style="display:grid;grid-template-columns:1fr 280px;gap:18px;margin-top:12px">
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr><th>Course</th><th>Grade</th><th>Credits</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Introduction to Programming</td><td>A</td><td>3</td></tr>
+              <tr><td>Data Structures</td><td>A-</td><td>4</td></tr>
+              <tr><td>Discrete Mathematics</td><td>A</td><td>3</td></tr>
+              <tr><td>Systems Design</td><td>B+</td><td>3</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <div class="card gpa-card">
+            <div class="muted">Semester GPA</div>
+            <div class="gpa">3.72</div>
+            <small class="muted">Cumulative: 3.68</small>
+          </div>
+
+          <div class="card mt-8">
+            <h4>Summary</h4>
+            <p class="muted">Total Credits: 13</p>
+            <p class="muted">Passing: Yes</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card mt-8">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <h3>Latest Quiz Results</h3>
+            <p class="muted">Review your recent assessments and track improvement.</p>
+          </div>
+          <a class="btn" href="quiz.html">Take a Quiz</a>
+        </div>
+        <div id="quiz-results" style="margin-top:16px"></div>
+      </section>
+
+      <div class="footer" style="margin-top:18px">Mini LMS — Results</div>
+    </main>
+  </div>
+  <script>
+  function setQuizResults(results){
+    const container = document.getElementById('quiz-results');
+    if(!results.length){
+      container.innerHTML = '<p class="muted">No quiz results yet. Take a quiz to see your performance.</p>';
+      return;
+    }
+    container.innerHTML = results.map(result => `
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>${result.subject}</strong>
+          <span class="badge ${result.score / result.total >= 0.7 ? 'submitted' : 'due'}">${result.score}/${result.total}</span>
+        </div>
+        <p class="muted">${result.correct} correct, ${result.wrong} wrong • ${result.time_taken} sec • ${result.date}</p>
+      </div>
+    `).join('');
+  }
+
+  async function loadQuizResults(){
+    const user = JSON.parse(localStorage.getItem('user')||'null');
+    if(!user){ document.getElementById('quiz-results').innerHTML = '<p class="muted">Login to view quiz results.</p>'; return; }
+    try{
+      const res = await fetch(`http://localhost:5000/api/quiz/results/${user.id}`);
+      const data = await res.json();
+      setQuizResults(data.results || []);
+    }catch(err){
+      document.getElementById('quiz-results').innerHTML = '<p class="muted">Unable to load quiz results.</p>';
+    }
+  }
+  loadQuizResults();
+  </script>
+  <script src="scripts/theme.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz — Mini LMS</title>
+  <link rel="stylesheet" href="styles/theme.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="images/logo.svg" alt="logo">
+        <div>
+          <div class="brand">Mini LMS</div>
+          <small>Student Portal</small>
+        </div>
+      </div>
+
+      <nav style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        <a class="nav-item" href="dashboard.html">Dashboard</a>
+        <a class="nav-item" href="profile.html">Profile</a>
+        <a class="nav-item" href="courses.html">Courses</a>
+        <a class="nav-item" href="attendance.html">Attendance</a>
+        <a class="nav-item" href="assignments.html">Assignments</a>
+        <a class="nav-item" href="results.html">Results</a>
+        <a class="nav-item" href="announcements.html">Announcements</a>
+        <a class="nav-item" href="quiz.html">Quiz</a>
+        <a class="nav-item" href="login.html">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main container">
+      <div class="topbar">
+        <h2>Practice Quiz</h2>
+        <div class="muted">Complete the quiz and save your score to the backend.</div>
+      </div>
+
+      <section class="card mt-8">
+        <div id="quiz-container"></div>
+        <button class="btn" id="submit-quiz" style="margin-top:18px">Submit Quiz</button>
+      </section>
+
+      <div class="footer" style="margin-top:18px">Mini LMS — Quiz</div>
+    </main>
+  </div>
+
+  <script>
+  const questions = [
+    {id: 1, question: 'Which HTML tag is used for the largest heading?', options: ['<h1>', '<head>', '<heading>', '<title>'], answer: '<h1>'},
+    {id: 2, question: 'What is the correct CSS property to change text color?', options: ['font-color', 'color', 'text-color', 'fg-color'], answer: 'color'},
+    {id: 3, question: 'In Python, which keyword defines a function?', options: ['func', 'define', 'def', 'function'], answer: 'def'},
+    {id: 4, question: 'Which data structure uses key-value pairs?', options: ['List', 'Dictionary', 'Tuple', 'Set'], answer: 'Dictionary'},
+    {id: 5, question: 'What does API stand for?', options: ['Application Program Interface', 'Advanced Programming Input', 'Application Programming Interface', 'Applied Program Interface'], answer: 'Application Programming Interface'}
+  ];
+
+  function showToast(message){
+    let el = document.getElementById('toast');
+    if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = message;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), 3000);
+  }
+
+  function renderQuiz(){
+    const container = document.getElementById('quiz-container');
+    container.innerHTML = questions.map((q, index) => `
+      <div class="card" style="margin-bottom:16px">
+        <h4>Question ${index + 1}</h4>
+        <p class="muted">${q.question}</p>
+        ${q.options.map(opt => `
+          <label style="display:block;margin:8px 0"><input type="radio" name="q${q.id}" value="${opt}"> ${opt}</label>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  function collectAnswers(){
+    return questions.map(q => {
+      const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+      return { question: q.question, selected: selected ? selected.value : null, correct: q.answer };
+    });
+  }
+
+  async function submitQuiz(){
+    const user = JSON.parse(localStorage.getItem('user')||'null');
+    if(!user){ window.location.href = 'login.html'; return; }
+    const answers = collectAnswers();
+    const correctCount = answers.filter(a => a.selected === a.correct).length;
+    const score = correctCount;
+    const total = answers.length;
+    const payload = {
+      user_id: user.id,
+      subject: 'Web Development Basics',
+      score,
+      total,
+      correct: correctCount,
+      wrong: total - correctCount,
+      answers,
+      time_taken: 120
+    };
+    try{
+      const res = await fetch('http://localhost:5000/api/quiz/submit', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if(!res.ok){ throw new Error(data.error || 'Submission failed'); }
+      if (score / total >= 0.7) {
+        launchConfetti();
+      }
+      showToast(`Quiz submitted: ${score}/${total}`);
+      window.location.href = 'results.html';
+    }catch(err){ console.error(err); showToast(err.message); }
+  }
+
+  document.getElementById('submit-quiz').addEventListener('click', submitQuiz);
+  renderQuiz();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script src="scripts/theme.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Courses — Mini LMS</title>
+  <link rel="stylesheet" href="styles/theme.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="images/logo.svg" alt="logo">
+        <div>
+          <div class="brand">Mini LMS</div>
+          <small>Student Portal</small>
+        </div>
+      </div>
+
+      <nav style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        <a class="nav-item" href="dashboard.html">Dashboard</a>
+        <a class="nav-item" href="profile.html">Profile</a>
+        <a class="nav-item" href="courses.html">Courses</a>
+        <a class="nav-item" href="attendance.html">Attendance</a>
+        <a class="nav-item" href="assignments.html">Assignments</a>
+        <a class="nav-item" href="quiz.html">Quiz</a>
+        <a class="nav-item" href="results.html">Results</a>
+        <a class="nav-item" href="announcements.html">Announcements</a>
+        <a class="nav-item" href="login.html">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main container">
+      <div class="topbar">
+        <h2>My Courses</h2>
+        <div class="muted">Enrolled courses for this semester</div>
+      </div>
+
+      <section class="courses-grid mt-8" id="courses-grid">
+        <!-- Courses will be loaded from backend -->
+      </section>
+
+      <div id="enroll-modal" class="modal-backdrop">
+        <div class="modal">
+          <h3 id="modal-course-title">Enroll in course</h3>
+          <p id="modal-course-copy">Confirm enrollment for this course and keep track of your progress.</p>
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+            <button class="btn secondary" id="cancel-enroll">Cancel</button>
+            <button class="btn" id="confirm-enroll">Confirm Enrollment</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer" style="margin-top:18px">Mini LMS — Courses</div>
+    </main>
+  </div>
+  <script>
+  let selectedCourseId = null;
+  let currentCourses = [];
+
+  function showModal(course){
+    selectedCourseId = course.id;
+    document.getElementById('modal-course-title').textContent = `Enroll in ${course.title}`;
+    document.getElementById('modal-course-copy').textContent = `Confirm enrollment for ${course.title} (${course.code}) with ${course.credits} credits.`;
+    document.getElementById('enroll-modal').style.display = 'flex';
+  }
+
+  function hideModal(){
+    document.getElementById('enroll-modal').style.display = 'none';
+    selectedCourseId = null;
+  }
+
+  function showToast(message){
+    let el = document.getElementById('toast');
+    if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = message;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), 3000);
+  }
+
+  async function fetchEnrollments(userId){
+    try{
+      const res = await fetch(`http://localhost:5000/api/courses/enrollments/${userId}`);
+      const data = await res.json();
+      return data.enrolled || [];
+    }catch(err){ return []; }
+  }
+
+  async function loadCourses(){
+    const user = JSON.parse(localStorage.getItem('user')||'null');
+    if(!user){ window.location.href = 'login.html'; return; }
+    const enrolledIds = await fetchEnrollments(user.id);
+    try{
+      const res = await fetch('http://localhost:5000/api/courses');
+      const data = await res.json();
+      currentCourses = data.courses || [];
+      const container = document.getElementById('courses-grid');
+      container.innerHTML = '';
+      currentCourses.forEach(c=>{
+        const enrolled = enrolledIds.some(id => String(id) === String(c.id));
+        const art = document.createElement('article');
+        art.className = 'course-card card';
+        art.innerHTML = `
+          <div class="course-meta">
+            <div>
+              <div class="muted">${c.code}</div>
+              <strong>${c.title}</strong>
+            </div>
+            <div class="muted">${c.credits} Credits</div>
+          </div>
+          <p class="muted">Instructor: ${c.instructor}</p>
+          <div style="margin-top:8px"><button class="btn enroll" data-id="${c.id}" ${enrolled ? 'disabled' : ''}>${enrolled ? 'Enrolled' : 'Enroll'}</button></div>
+        `;
+        container.appendChild(art);
+      });
+      document.querySelectorAll('.enroll').forEach(btn=>btn.addEventListener('click', (e)=>{
+        const id = e.target.dataset.id;
+        const course = currentCourses.find(c => String(c.id) === String(id));
+        if(course){ showModal(course); }
+      }));
+    }catch(err){ console.error(err); showToast('Unable to load courses'); }
+  }
+
+  document.getElementById('cancel-enroll').addEventListener('click', hideModal);
+  document.getElementById('confirm-enroll').addEventListener('click', async ()=>{
+    const user = JSON.parse(localStorage.getItem('user')||'null');
+    if(!user || !selectedCourseId){ hideModal(); return; }
+    try{
+      const res = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}/enroll`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id: user.id})
+      });
+      const data = await res.json();
+      showToast(data.message || 'Enrollment confirmed');
+      hideModal();
+      await loadCourses();
+    }catch(err){ console.error(err); showToast('Enrollment failed'); hideModal(); }
+  });
+
+  loadCourses();
+  </script>
+  <script src="scripts/theme.js" defer></script>
+</body>
+</html>

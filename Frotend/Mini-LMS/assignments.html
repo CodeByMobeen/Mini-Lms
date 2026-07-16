@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assignments — Mini LMS</title>
+  <link rel="stylesheet" href="styles/theme.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="images/logo.svg" alt="logo">
+        <div>
+          <div class="brand">Mini LMS</div>
+          <small>Student Portal</small>
+        </div>
+      </div>
+
+      <nav style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        <a class="nav-item" href="dashboard.html">Dashboard</a>
+        <a class="nav-item" href="profile.html">Profile</a>
+        <a class="nav-item" href="courses.html">Courses</a>
+        <a class="nav-item" href="attendance.html">Attendance</a>
+        <a class="nav-item" href="assignments.html">Assignments</a>
+        <a class="nav-item" href="quiz.html">Quiz</a>
+        <a class="nav-item" href="results.html">Results</a>
+        <a class="nav-item" href="announcements.html">Announcements</a>
+        <a class="nav-item" href="login.html">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main container">
+      <div class="topbar">
+        <h2>Assignments</h2>
+        <div class="muted">Upcoming and submitted assignments</div>
+      </div>
+
+      <section id="assignments-list" style="display:grid;gap:12px;margin-top:12px"></section>
+
+      <div class="footer" style="margin-top:18px">Mini LMS — Assignments</div>
+    </main>
+  </div>
+  <script>
+  function showToast(message){
+    let el = document.getElementById('toast');
+    if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = message;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), 3000);
+  }
+
+  function renderAssignments(assignments){
+    const container = document.getElementById('assignments-list');
+    if(!assignments || !assignments.length){
+      container.innerHTML = '<div class="card"><p class="muted">No assignments available.</p></div>';
+      return;
+    }
+    container.innerHTML = assignments.map(a => `
+      <div class="assignment card">
+        <div>
+          <strong>${a.course}</strong>
+          <div class="muted">${a.title}</div>
+          <small class="muted">${a.status === 'Submitted' ? 'Submitted:' : 'Due:'} ${a.due_date}</small>
+        </div>
+        <div class="text-right">
+          <div class="badge ${a.status === 'Submitted' ? 'submitted' : 'due'}">${a.status}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadAssignments(){
+    const token = localStorage.getItem('token');
+    if(!token){ window.location.href = 'login.html'; return; }
+    try{
+      const res = await fetch('http://localhost:5000/api/assignments');
+      const data = await res.json();
+      renderAssignments(data.assignments || []);
+    }catch(err){
+      console.error(err);
+      showToast('Failed to load assignments');
+    }
+  }
+
+  loadAssignments();
+  </script>
+  <script src="scripts/theme.js" defer></script>
+</body>
+</html>
